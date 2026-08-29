@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HDCA, End to End — The Digit Refinery</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   THEME TOKENS — dark is the native APC BYTES palette;
+   light is a genuine paired palette, not an inversion hack.
+   ============================================================ */
+:root{
+  --bg:#F5F3EE;
+  --panel:#FFFFFF;
+  --card:#FFFFFF;
+  --card-2:#EFEBE2;
+  --line:rgba(40,50,70,.12);
+  --line-strong:rgba(40,50,70,.22);
+
+  --signal:#0E9C8F;      /* DATA / machine accent (teal, not neon) */
+  --signal-2:#3457B2;    /* electric blue, muted for light ground */
+  --warm:#B5710A;        /* HUMAN ink accent (amber, deepened) */
+
+  --pos:#0E9C8F;
+  --neu:#B5710A;
+  --neg:#C23B4B;
+
+  --text:#1C2333;
+  --muted:#5B6478;
+  --dim:#8891A3;
+
+  --display:'Space Grotesk',system-ui,sans-serif;
+  --body:'Inter',system-ui,sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,monospace;
+
+  --maxw:1180px;
+  --r:18px;
+  --grad:linear-gradient(90deg,var(--signal),var(--signal-2));
+  --grad-v:linear-gradient(180deg,var(--signal),var(--signal-2));
+  --glow-a:.16;
+}
+
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0B1222;
+    --panel:#0F1A31;
+    --card:#152341;
+    --card-2:#1B2C50;
+    --line:rgba(150,170,220,.14);
+    --line-strong:rgba(150,170,220,.28);
+
+    --signal:#35E0D0;
+    --signal-2:#5B8CFF;
+    --warm:#FFC24B;
+
+    --pos:#35E0D0;
+    --neu:#FFC24B;
+    --neg:#FF6E7F;
+
+    --text:#EAF0FF;
+    --muted:#93A0C2;
+    --dim:#63719A;
+    --glow-a:.6;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0B1222;
+  --panel:#0F1A31;
+  --card:#152341;
+  --card-2:#1B2C50;
+  --line:rgba(150,170,220,.14);
+  --line-strong:rgba(150,170,220,.28);
+
+  --signal:#35E0D0;
+  --signal-2:#5B8CFF;
+  --warm:#FFC24B;
+
+  --pos:#35E0D0;
+  --neu:#FFC24B;
+  --neg:#FF6E7F;
+
+  --text:#EAF0FF;
+  --muted:#93A0C2;
+  --dim:#63719A;
+  --glow-a:.6;
+}
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;background:
+    radial-gradient(1200px 700px at 80% -10%,rgba(52,87,178,.10),transparent 60%),
+    radial-gradient(900px 600px at -10% 20%,rgba(14,156,143,.08),transparent 55%),
+    var(--bg);
+  color:var(--text);font-family:var(--body);line-height:1.65;
+  -webkit-font-smoothing:antialiased;overflow-x:hidden;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]) body{background:
+    radial-gradient(1200px 700px at 80% -10%,rgba(91,140,255,.14),transparent 60%),
+    radial-gradient(900px 600px at -10% 20%,rgba(53,224,208,.10),transparent 55%),
+    var(--bg);}
+}
+:root[data-theme="dark"] body{background:
+  radial-gradient(1200px 700px at 80% -10%,rgba(91,140,255,.14),transparent 60%),
+  radial-gradient(900px 600px at -10% 20%,rgba(53,224,208,.10),transparent 55%),
+  var(--bg);}
+
+.wrap{max-width:var(--maxw);margin:0 auto;padding:0 26px}
+h1,h2,h3,h4{font-family:var(--display);line-height:1.12;letter-spacing:-.02em;margin:0;text-wrap:balance}
+p{margin:0 0 14px}
+a{color:var(--signal);text-decoration:none}
+code,.mono{font-family:var(--mono)}
+.mono-chip{font-family:var(--mono);font-size:.86em;background:rgba(52,87,178,.10);
+  border:1px solid var(--line);border-radius:6px;padding:1px 7px;color:var(--signal-2)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .mono-chip{background:rgba(91,140,255,.12);color:#CFE0FF}}
+:root[data-theme="dark"] .mono-chip{background:rgba(91,140,255,.12);color:#CFE0FF}
+
+a:focus-visible,button:focus-visible,summary:focus-visible,.step-btn:focus-visible,.chip:focus-visible{
+  outline:2px solid var(--signal);outline-offset:2px;border-radius:6px;
+}
+
+/* ---------- top progress + nav ---------- */
+#bar{position:fixed;top:0;left:0;height:3px;width:0;z-index:60;background:var(--grad);
+  box-shadow:0 0 14px rgba(14,156,143,.45)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) #bar{box-shadow:0 0 14px rgba(53,224,208,.6)}}
+:root[data-theme="dark"] #bar{box-shadow:0 0 14px rgba(53,224,208,.6)}
+
+nav{position:fixed;top:0;left:0;right:0;z-index:50;backdrop-filter:blur(12px);
+  background:color-mix(in srgb, var(--bg) 78%, transparent);border-bottom:1px solid var(--line)}
+nav .wrap{display:flex;align-items:center;gap:20px;height:60px}
+.brand{font-family:var(--display);font-weight:700;letter-spacing:-.02em;font-size:18px;display:flex;align-items:center;gap:10px}
+.brand .dot{width:11px;height:11px;border-radius:50%;background:var(--grad);box-shadow:0 0 12px var(--signal)}
+.navlinks{margin-left:auto;display:flex;gap:4px;flex-wrap:wrap}
+.navlinks a{color:var(--muted);font-family:var(--body);font-weight:500;font-size:13.5px;
+  padding:7px 11px;border-radius:9px;transition:.2s}
+.navlinks a:hover{color:var(--text);background:rgba(52,87,178,.1);text-decoration:none}
+.theme-toggle{margin-left:6px;display:flex;align-items:center;gap:2px;border:1px solid var(--line-strong);
+  border-radius:20px;padding:3px;background:var(--card)}
+.theme-toggle button{border:0;background:transparent;color:var(--muted);font-size:13px;padding:5px 10px;
+  border-radius:16px;cursor:pointer;font-family:var(--body);font-weight:500;transition:.2s}
+.theme-toggle button.active{background:var(--grad);color:#04121a}
+@media(max-width:900px){.navlinks{display:none}}
+
+/* ---------- hero ---------- */
+header{padding:130px 0 40px;position:relative}
+.eyebrow{font-family:var(--mono);font-size:12.5px;letter-spacing:.32em;text-transform:uppercase;
+  color:var(--signal);margin-bottom:20px}
+.hero-title{font-size:clamp(38px,7vw,72px);font-weight:700}
+.hero-title .hl{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero-sub{font-size:clamp(16px,2.4vw,20px);color:var(--muted);max-width:640px;margin-top:20px}
+.hero-cta{display:flex;gap:14px;margin-top:30px;flex-wrap:wrap}
+.btn{font-family:var(--body);font-weight:600;font-size:15px;border:0;cursor:pointer;
+  padding:13px 22px;border-radius:12px;transition:.22s;display:inline-flex;gap:9px;align-items:center}
+.btn-primary{background:var(--grad);color:#04121a;box-shadow:0 8px 30px rgba(14,156,143,.22)}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 12px 38px rgba(14,156,143,.32)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .btn-primary{box-shadow:0 8px 30px rgba(53,224,208,.28)}}
+:root[data-theme="dark"] .btn-primary{box-shadow:0 8px 30px rgba(53,224,208,.28)}
+.btn-ghost{background:transparent;color:var(--text);border:1px solid var(--line-strong)}
+.btn-ghost:hover{border-color:var(--signal);color:var(--signal)}
+
+/* ---------- hero pipeline animation ---------- */
+.pipe{margin-top:56px;border:1px solid var(--line);border-radius:var(--r);
+  background:linear-gradient(180deg,var(--card),var(--card-2));padding:26px 22px;position:relative;overflow:hidden;
+  box-shadow:0 1px 2px rgba(20,20,20,.04),0 8px 30px rgba(20,20,20,.05)}
+.pipe-label{font-family:var(--mono);font-size:11.5px;letter-spacing:.2em;color:var(--dim);text-transform:uppercase;margin-bottom:18px}
+.stages{display:flex;align-items:stretch;gap:0;position:relative;flex-wrap:nowrap;overflow-x:auto;padding-bottom:6px}
+.stage{flex:1 0 auto;min-width:110px;text-align:center;position:relative;padding:0 6px}
+.node{width:58px;height:58px;margin:0 auto 12px;border-radius:16px;display:grid;place-items:center;
+  background:var(--card-2);border:1px solid var(--line-strong);font-size:23px;position:relative;transition:.35s}
+.node.human{border-color:rgba(181,113,10,.4)}
+.node.machine{border-color:rgba(14,156,143,.4)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .node.machine{border-color:rgba(53,224,208,.4)}}
+:root[data-theme="dark"] .node.machine{border-color:rgba(53,224,208,.4)}
+.stage.on .node{transform:translateY(-4px) scale(1.06);box-shadow:0 0 0 4px rgba(14,156,143,.14),0 12px 30px rgba(14,156,143,.2);border-color:var(--signal)}
+.stage .cap{font-size:12.5px;color:var(--muted);font-weight:500}
+.stage .num{font-family:var(--mono);font-size:10.5px;color:var(--dim);display:block;margin-bottom:2px}
+.stage.on .cap{color:var(--text)}
+.rail{position:absolute;top:29px;left:8%;right:8%;height:2px;background:var(--line-strong);z-index:0}
+.rail .flow{position:absolute;top:-2px;left:0;width:70px;height:6px;border-radius:6px;
+  background:var(--grad);box-shadow:0 0 16px var(--signal);filter:blur(.3px)}
+.io{display:grid;grid-template-columns:1fr auto 1fr;gap:16px;align-items:center;margin-top:22px}
+.io .box{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;min-height:64px}
+.io .box .k{font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;margin-bottom:6px}
+.io .in .k{color:var(--warm)}.io .out .k{color:var(--signal)}
+.io .in{font-family:var(--body)}
+.io .out{font-family:var(--mono);font-size:13.5px}
+.io .arrow{color:var(--dim);font-size:22px}
+@media(max-width:620px){.io{grid-template-columns:1fr}.io .arrow{transform:rotate(90deg)}}
+
+/* ---------- sections ---------- */
+section{padding:78px 0;position:relative}
+.station-tag{display:inline-flex;align-items:center;gap:11px;font-family:var(--mono);font-size:12.5px;
+  letter-spacing:.2em;text-transform:uppercase;color:var(--signal);margin-bottom:16px}
+.station-tag .n{width:30px;height:30px;border-radius:9px;border:1px solid var(--line-strong);
+  display:grid;place-items:center;color:var(--text);font-weight:700;background:rgba(52,87,178,.06)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .station-tag .n{background:rgba(91,140,255,.08)}}
+:root[data-theme="dark"] .station-tag .n{background:rgba(91,140,255,.08)}
+.sec-title{font-size:clamp(26px,4vw,40px);font-weight:700;max-width:760px}
+.lead{font-size:18px;color:var(--muted);max-width:720px;margin-top:16px}
+.level{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+  padding:3px 9px;border-radius:20px;border:1px solid var(--line-strong);color:var(--muted);margin-left:8px}
+.level.b{color:var(--pos);border-color:rgba(14,156,143,.35)}
+.level.i{color:var(--neu);border-color:rgba(181,113,10,.35)}
+.level.a{color:var(--neg);border-color:rgba(194,59,75,.35)}
+
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:26px;
+  box-shadow:0 1px 2px rgba(20,20,20,.03),0 6px 22px rgba(20,20,20,.04)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .card{background:linear-gradient(180deg,rgba(21,35,65,.72),rgba(15,26,49,.72));box-shadow:none}}
+:root[data-theme="dark"] .card{background:linear-gradient(180deg,rgba(21,35,65,.72),rgba(15,26,49,.72));box-shadow:none}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+@media(max-width:820px){.grid2,.grid3{grid-template-columns:1fr}}
+.note h4{font-size:16px;color:var(--text);margin:20px 0 8px;font-family:var(--display)}
+.note h4:first-child{margin-top:0}
+.note p,.note li{color:var(--text);opacity:.86;font-size:15.5px}
+.note ul{margin:6px 0 14px;padding-left:20px}.note li{margin-bottom:6px}
+.pitfall{border-left:3px solid var(--warm);background:rgba(181,113,10,.07);
+  padding:12px 16px;border-radius:0 10px 10px 0;margin:14px 0;font-size:14.5px;color:var(--text)}
+.pitfall b{color:var(--warm)}
+.tiein{border-left:3px solid var(--signal);background:rgba(14,156,143,.06);
+  padding:12px 16px;border-radius:0 10px 10px 0;margin:14px 0;font-size:14.5px;color:var(--text)}
+.tiein b{color:var(--signal)}
+.reveal{opacity:0;transform:translateY(24px);transition:.7s cubic-bezier(.2,.7,.2,1)}
+.reveal.show{opacity:1;transform:none}
+
+/* ---------- Live preprocessing demo ---------- */
+.demo-shell{display:grid;grid-template-columns:220px 1fr;gap:24px;align-items:start}
+@media(max-width:760px){.demo-shell{grid-template-columns:1fr}}
+.canvas-card{display:flex;flex-direction:column;gap:10px;align-items:center}
+#drawCanvas{background:#FFFFFF;border-radius:12px;border:2px solid var(--line-strong);cursor:crosshair;touch-action:none}
+.canvas-hint{font-size:12.5px;color:var(--muted);text-align:center}
+.canvas-btns{display:flex;gap:8px}
+.steps{display:flex;gap:8px;margin:0 0 16px;flex-wrap:wrap}
+.step-btn{font-family:var(--mono);font-size:12.5px;padding:8px 13px;border-radius:9px;cursor:pointer;
+  border:1px solid var(--line-strong);background:transparent;color:var(--muted);transition:.2s}
+.step-btn.active{color:#04121a;background:var(--grad);border-color:transparent;font-weight:700}
+.stage-caption{font-size:14px;color:var(--muted);min-height:22px;margin-top:10px;font-family:var(--mono)}
+.mini-canvases{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end}
+.mini-canvases .unit{display:flex;flex-direction:column;align-items:center;gap:6px}
+.mini-canvases canvas{background:#FFFFFF;border-radius:8px;border:1px solid var(--line-strong)}
+.mini-canvases .lab{font-family:var(--mono);font-size:11px;color:var(--dim);letter-spacing:.06em;text-transform:uppercase}
+
+/* ---------- data table preview ---------- */
+.tbl-wrap{overflow-x:auto}
+table.dataset{border-collapse:separate;border-spacing:0;font-family:var(--mono);font-size:12.5px;width:100%;min-width:560px}
+table.dataset th{text-align:left;color:var(--dim);font-weight:500;font-size:11px;letter-spacing:.1em;
+  text-transform:uppercase;padding:8px 10px;border-bottom:1px solid var(--line-strong)}
+table.dataset td{padding:9px 10px;border-bottom:1px solid var(--line);color:var(--text)}
+table.dataset tr:last-child td{border-bottom:none}
+table.dataset td.lbl{color:var(--signal);font-weight:700}
+
+/* ---------- file tree ---------- */
+.tree-card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:1.3rem 1.5rem;overflow-x:auto}
+.tree-card pre{margin:0;font-family:var(--mono);font-size:13.5px;line-height:1.8;color:var(--text);opacity:.88;white-space:pre}
+.tree-card .f-app{color:var(--signal-2);font-weight:700;opacity:1}
+.tree-card .f-core{color:var(--text);font-weight:600;opacity:1}
+.tree-card .f-dir{color:var(--dim)}
+.tree-card .f-comment{color:var(--dim);font-style:italic}
+
+/* ---------- concept modules ---------- */
+.module{border:1px solid var(--line);border-radius:var(--r);padding:0;overflow:hidden;margin-bottom:18px;
+  background:var(--card)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .module{background:linear-gradient(180deg,rgba(21,35,65,.66),rgba(15,26,49,.66))}}
+:root[data-theme="dark"] .module{background:linear-gradient(180deg,rgba(21,35,65,.66),rgba(15,26,49,.66))}
+.module>.mhead{display:flex;align-items:center;gap:14px;padding:20px 26px;border-bottom:1px solid var(--line);cursor:pointer}
+.module>.mhead .mno{font-family:var(--mono);font-size:13px;color:var(--signal);border:1px solid var(--line-strong);
+  border-radius:9px;width:34px;height:34px;display:grid;place-items:center;flex:0 0 auto}
+.module>.mhead h3{font-size:19px;font-family:var(--display);flex:1}
+.module>.mhead .chev{color:var(--dim);transition:.3s;font-size:14px}
+.module.open>.mhead .chev{transform:rotate(90deg);color:var(--signal)}
+.module>.mhead .duration{font-family:var(--mono);font-size:12px;color:var(--dim)}
+.mbody{max-height:0;overflow:hidden;transition:max-height .5s ease}
+.module.open .mbody{max-height:9000px}
+.mbody-inner{padding:6px 26px 24px}
+.flow-step{margin:18px 0 6px;display:flex;align-items:center;gap:9px;font-family:var(--mono);font-size:12px;
+  letter-spacing:.14em;text-transform:uppercase;color:var(--signal)}
+.flow-step .ic{font-size:15px}
+.mbody-inner p,.mbody-inner li{color:var(--text);opacity:.88;font-size:15.5px}
+.mbody-inner .ex{color:var(--warm);font-style:italic;opacity:1}
+.split{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px}
+@media(max-width:620px){.split{grid-template-columns:1fr}}
+.stack-card{border:1px solid var(--line);border-radius:10px;padding:.85rem 1rem;background:var(--panel)}
+.stack-card .stack-label{font-size:.7rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-bottom:.4rem;display:block}
+.stack-card.vibe .stack-label{color:var(--neu)}
+.stack-card.hand .stack-label{color:var(--pos)}
+.stack-card p{margin:0;font-size:.86rem;color:var(--text);opacity:.85;line-height:1.55}
+
+.codewrap{position:relative;margin:6px 0 4px}
+.codewrap pre{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px;overflow-x:auto;margin:0}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .codewrap pre{background:#070E1C}}
+:root[data-theme="dark"] .codewrap pre{background:#070E1C}
+.codewrap code{font-family:var(--mono);font-size:13px;line-height:1.65;color:var(--text);opacity:.86;white-space:pre}
+.codewrap .cp{position:absolute;top:10px;right:10px;font-family:var(--mono);font-size:11px;color:var(--muted);
+  background:rgba(52,87,178,.08);border:1px solid var(--line);border-radius:7px;padding:4px 9px;cursor:pointer;transition:.2s}
+.codewrap .cp:hover{color:var(--text);border-color:var(--signal)}
+.tk{margin:14px 0 4px;padding:0 0 0 20px}
+.tk li{margin:5px 0;color:var(--text);opacity:.88;font-size:15px}
+details.qa{border:1px solid var(--line);border-radius:10px;margin:8px 0;background:var(--panel);overflow:hidden}
+details.qa>summary{cursor:pointer;padding:11px 15px;font-weight:600;color:var(--text);font-size:14.5px;list-style:none}
+details.qa>summary::-webkit-details-marker{display:none}
+details.qa>summary:before{content:'▸';color:var(--signal);margin-right:9px;display:inline-block;transition:.2s}
+details.qa[open]>summary:before{transform:rotate(90deg)}
+details.qa .qa-a{padding:0 15px 14px;color:var(--text);opacity:.82;font-size:14.5px;border-top:1px solid var(--line)}
+.formula{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--signal-2);border-radius:0 12px 12px 0;
+  padding:14px 18px;margin:8px 0;font-family:var(--mono);font-size:14.5px;color:var(--text);overflow-x:auto;line-height:1.9}
+
+/* ---------- glossary ---------- */
+.gloss{columns:2;column-gap:26px}
+@media(max-width:820px){.gloss{columns:1}}
+.gterm{break-inside:avoid;margin-bottom:14px}
+.gterm b{color:var(--signal);font-family:var(--mono);font-size:14px}
+.gterm span{display:block;color:var(--muted);font-size:14.5px}
+
+footer{border-top:1px solid var(--line);padding:44px 0 60px;color:var(--dim);font-size:14px}
+.kbd{font-family:var(--mono);font-size:12px;border:1px solid var(--line-strong);border-radius:6px;padding:1px 7px;color:var(--muted)}
+
+@media(prefers-reduced-motion:reduce){
+  *{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+  .reveal{opacity:1;transform:none}
+}
+</style>
+</head>
+<body>
+<div id="bar"></div>
+<nav><div class="wrap">
+  <div class="brand"><span class="dot"></span>The Digit Refinery</div>
+  <div class="navlinks">
+    <a href="#pipeline">Pipeline</a><a href="#refine">Preprocess</a><a href="#structure">Structure</a>
+    <a href="#sessions">Sessions</a><a href="#capstone">Capstone</a><a href="#glossary">Glossary</a>
+  </div>
+  <div class="theme-toggle" role="group" aria-label="Theme">
+    <button data-mode="light">Light</button>
+    <button data-mode="dark">Dark</button>
+    <button data-mode="auto" class="active">Auto</button>
+  </div>
+</div></nav>
+
+<!-- ============================ HERO ============================ -->
+<header><div class="wrap">
+  <div class="eyebrow">HDCA Live Build · beginner → intermediate</div>
+  <h1 class="hero-title">Turn a <span class="hl">shaky pencil stroke</span><br>into a clean 28×28 signal.</h1>
+  <p class="hero-sub">HDCA is a live-build Streamlit app: learners sign in with Google, draw digits 0–9, and every stroke gets refined — cropped, scaled, and centered by mass — into an MNIST-style image, then saved with a clear label. This page walks the whole line, with a live in-browser demo of the refinery itself.</p>
+  <div class="hero-cta">
+    <a class="btn btn-primary" href="#refine">Run the refinery ↓</a>
+    <a class="btn btn-ghost" href="#sessions">Jump to sessions</a>
+  </div>
+
+  <div class="pipe reveal">
+    <div class="pipe-label">Live pipeline · one submitted digit moving through the app</div>
+    <div class="stages" id="stages">
+      <div class="rail"><div class="flow" id="flow"></div></div>
+      <div class="stage"><span class="num">RAW</span><div class="node human">✍️</div><div class="cap">Hand draws</div></div>
+      <div class="stage"><span class="num">01</span><div class="node">🔐</div><div class="cap">Google login</div></div>
+      <div class="stage"><span class="num">02</span><div class="node">🖼️</div><div class="cap">Canvas capture</div></div>
+      <div class="stage"><span class="num">03</span><div class="node machine">✂️</div><div class="cap">Crop to ink</div></div>
+      <div class="stage"><span class="num">04</span><div class="node machine">📐</div><div class="cap">Scale 20×20</div></div>
+      <div class="stage"><span class="num">05</span><div class="node machine">🎯</div><div class="cap">Center by mass</div></div>
+      <div class="stage"><span class="num">OUT</span><div class="node machine">💾</div><div class="cap">Save + label</div></div>
+    </div>
+    <div class="io">
+      <div class="box in"><div class="k">Learner draws</div><div id="hero-in">A "7", drawn slightly high and to the right of a 280×280 canvas</div></div>
+      <div class="arrow">→</div>
+      <div class="box out"><div class="k">Saved record</div><div id="hero-out">7_<span style="color:var(--signal)">a1b2c3</span>.png &nbsp;+&nbsp; row: name, email, label=<b style="color:var(--signal)">7</b></div></div>
+    </div>
+  </div>
+</div></header>
+
+<!-- ============================ WHY IT'S HARD ============================ -->
+<section id="why"><div class="wrap">
+  <div class="station-tag"><span class="n">✦</span>The core tension</div>
+  <h2 class="sec-title">Handwriting is for people. A 28×28 grid is for machines. HDCA is the bridge.</h2>
+  <p class="lead">A model trained on digits only ever sees a fixed 28×28 grid of numbers. A human hand never draws twice the same way — different size, different position, different pressure. Almost everything in this page exists to close that gap, turning wildly inconsistent strokes into a uniform, comparable representation <em>without losing what digit it is</em>.</p>
+  <div class="grid3" style="margin-top:30px">
+    <div class="card reveal note"><h4 style="color:var(--warm)">Position</h4><p>One learner draws dead-center; the next draws in the corner. A model shouldn't have to relearn "7" depending on where it landed on the canvas.</p></div>
+    <div class="card reveal note"><h4 style="color:var(--warm)">Size</h4><p>A confident, sprawling "8" and a tiny cautious "8" are the same digit. Without scaling, size becomes noise the model has to ignore the hard way.</p></div>
+    <div class="card reveal note"><h4 style="color:var(--warm)">Weight</h4><p>Not every stroke is drawn evenly — thick loops, thin tails. Centering on the <em>ink</em>, not just the outline, keeps the digit balanced.</p></div>
+  </div>
+  <div class="tiein" style="max-width:820px;margin-top:26px"><b>The mental model that never changes:</b> capture → crop → scale → center → save. This is the exact recipe the original MNIST dataset used to turn 70,000 different hands into one uniform format — and it's what we hand-code together in Session 3.</div>
+</div></section>
+
+<!-- ============================ PIPELINE MAP ============================ -->
+<section id="pipeline"><div class="wrap">
+<div class="station-tag"><span class="n">✦</span>The full map</div>
+<h2 class="sec-title">The HDCA data pipeline, end to end</h2>
+<p class="lead">Everything below on this page expands one of these five stages. Sessions 1–4 build them in order; Session 5 closes the loop by training on what the class collected.</p>
+<div class="card reveal" style="margin-top:26px">
+<div class="grid3">
+  <div class="stack-card hand"><span class="stack-label">Identity</span><p>Google OAuth confirms who's drawing, so every sample is honestly attributed — not typed in, verified.</p></div>
+  <div class="stack-card hand"><span class="stack-label">Capture</span><p>A drawable canvas hands back a raw RGBA pixel array — a drawing is just numbers from this point on.</p></div>
+  <div class="stack-card hand"><span class="stack-label">Refine</span><p>Crop to the ink's bounding box, scale to fit 20×20 preserving aspect ratio, then re-center by center of mass.</p></div>
+</div>
+<div class="grid2" style="margin-top:18px">
+  <div class="stack-card hand"><span class="stack-label">Persist</span><p>Save the 28×28 result as a PNG, append a labeled row (name, email, digit, filename) to a spreadsheet.</p></div>
+  <div class="stack-card hand"><span class="stack-label">Close the loop</span><p>Load the class's combined dataset back and train a small classifier on the digits everyone just drew.</p></div>
+</div>
+</div>
+</div></section>
+
+<!-- ============================ LIVE REFINERY DEMO ============================ -->
+<section id="refine"><div class="wrap">
+  <div class="station-tag"><span class="n">03</span>Crop · Scale · Center <span class="level b">The conceptual core</span></div>
+  <h2 class="sec-title">The Digit Refinery — try it yourself</h2>
+  <p class="lead">Draw a digit on the left. Step through the refinery on the right and watch your exact stroke get cropped to its ink, rescaled to a 20×20 box, and re-centered by <em>center of mass</em> — the same recipe <code class="mono-chip">preprocess.py</code> runs in the real app.</p>
+
+  <div class="card reveal" style="margin-top:26px">
+    <div class="demo-shell">
+      <div class="canvas-card">
+        <canvas id="drawCanvas" width="200" height="200"></canvas>
+        <div class="canvas-hint">Draw with your mouse or finger</div>
+        <div class="canvas-btns">
+          <button class="btn btn-ghost" id="clearCanvas" style="padding:8px 14px;font-size:13px">Clear</button>
+          <button class="btn btn-primary" id="sampleDigit" style="padding:8px 14px;font-size:13px">Try a sample "7"</button>
+        </div>
+      </div>
+      <div>
+        <div class="steps" id="ref-steps">
+          <button class="step-btn active" data-step="0">RAW</button>
+          <button class="step-btn" data-step="1">1 · Crop to ink</button>
+          <button class="step-btn" data-step="2">2 · Scale to 20×20</button>
+          <button class="step-btn" data-step="3">3 · Center by mass</button>
+        </div>
+        <div class="mini-canvases">
+          <div class="unit"><canvas id="stageCanvas" width="200" height="200"></canvas><span class="lab" id="stageDim">280×280</span></div>
+          <div class="unit"><canvas id="finalCanvas" width="140" height="140"></canvas><span class="lab">28×28 result</span></div>
+        </div>
+        <div class="stage-caption" id="ref-cap">Draw something on the left to begin.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid2" style="margin-top:26px">
+    <div class="card note reveal">
+      <h4>1 · Crop to the bounding box</h4>
+      <p>Find every pixel with ink above a small threshold, then crop to the smallest rectangle containing all of it. This throws away the empty margins a learner didn't draw in.</p>
+      <div class="pitfall"><b>Why a threshold, not zero:</b> anti-aliased stroke edges leave faint near-white pixels. A hard <code class="mono-chip">&gt; 0</code> check would let those count as "ink" and crop too loosely.</div>
+    </div>
+    <div class="card note reveal">
+      <h4>2 · Scale, preserving aspect ratio</h4>
+      <p>Resize so the <em>longer</em> side fits a 20×20 inner box — a thin "1" stays thin; a wide "0" stays wide. Squashing both dimensions to a square would distort the digit's shape.</p>
+      <h4>3 · Center by mass, not by box</h4>
+      <p>Paste onto a blank 28×28 canvas, then shift the whole image so the digit's <em>center of mass</em> — where the ink is "heaviest" — lands on the exact center. This is the detail that makes MNIST-style digits look so uniformly centered.</p>
+    </div>
+  </div>
+</div></section>
+
+<!-- ============================ PROJECT STRUCTURE ============================ -->
+<section id="structure"><div class="wrap">
+  <div class="station-tag"><span class="n">✦</span>What we're building</div>
+  <h2 class="sec-title">Project structure</h2>
+  <p class="lead">This is the folder every learner has once Session 4 is done. Nothing here is hidden — every file is something we write together, in order.</p>
+  <div class="tree-card reveal" style="margin-top:26px">
+<pre>HandwrittenDigitCollectionApp/
+├── <span class="f-app">app.py</span>                    <span class="f-comment"># main app — login, canvas, flow control  (Session 1, 2, 4)</span>
+├── <span class="f-core">preprocess.py</span>              <span class="f-comment"># crop → scale → center-of-mass             (Session 3)</span>
+├── <span class="f-core">storage.py</span>                 <span class="f-comment"># save image + append labeled row            (Session 4)</span>
+├── requirements.txt
+├── <span class="f-dir">.streamlit/</span>
+│   └── secrets.toml           <span class="f-comment"># your Google OAuth keys — never shared</span>
+├── <span class="f-dir">data/</span>
+│   ├── <span class="f-dir">images/</span>                 <span class="f-comment"># every saved 28×28 PNG, one per digit</span>
+│   └── labels.xlsx            <span class="f-comment"># name, email, label, filename — one row each</span>
+└── <span class="f-dir">course/</span>                     <span class="f-comment"># the five session guides</span></pre>
+  </div>
+
+  <div class="card reveal" style="margin-top:24px">
+    <h4 style="font-family:var(--display);margin-bottom:10px">A preview of <code class="mono-chip">data/labels.xlsx</code></h4>
+    <div class="tbl-wrap">
+      <table class="dataset">
+        <tr><th>timestamp_utc</th><th>name</th><th>email</th><th>label</th><th>image_filename</th></tr>
+        <tr><td>2026-08-22T14:20:39Z</td><td>Priya Shah</td><td>priya@class.edu</td><td class="lbl">0</td><td>priya_0_20260822.png</td></tr>
+        <tr><td>2026-08-22T14:21:02Z</td><td>Priya Shah</td><td>priya@class.edu</td><td class="lbl">1</td><td>priya_1_20260822.png</td></tr>
+        <tr><td>2026-08-22T14:19:55Z</td><td>Dev Kumar</td><td>dev@class.edu</td><td class="lbl">7</td><td>dev_7_20260822.png</td></tr>
+      </table>
+    </div>
+  </div>
+</div></section>
+
+<!-- ============================ SESSION MODULES ============================ -->
+<section id="sessions"><div class="wrap">
+<div class="station-tag"><span class="n">✦</span>Live build, five sessions</div>
+<h2 class="sec-title">Every session, the same rhythm</h2>
+<p class="lead">Vibe-code a rough pass first for momentum, then close the AI tool and hand-code the real logic together. Click a session to expand it. Session 3 is the conceptual heart — don't rush it.</p>
+<div style="margin-top:26px" class="reveal">
+
+<div class="module"><div class="mhead"><span class="mno">01</span><h3>Auth &amp; Skeleton</h3><span class="level b">Beginner</span><span class="duration">~60–75 min</span><span class="chev">▶</span></div><div class="mbody"><div class="mbody-inner">
+<div class="flow-step"><span class="ic">🔍</span>Intuition</div>
+<p>Before anyone draws a single digit, the app needs to know <em>who</em> is drawing it. A form asking "type your name" can't verify identity — anyone could type someone else's. Google OAuth actually does.</p>
+<div class="flow-step"><span class="ic">🧩</span>Split</div>
+<div class="split">
+  <div class="stack-card vibe"><span class="stack-label">Vibe-coded</span><p>App shell, page title, layout scaffolding.</p></div>
+  <div class="stack-card hand"><span class="stack-label">Hand-coded</span><p>The login gate with <code class="mono-chip">st.stop()</code>, and why Streamlit reruns the entire script on every click.</p></div>
+</div>
+<div class="flow-step"><span class="ic">💻</span>Code demo</div>
+<div class="codewrap"><button class="cp" onclick="copyCode(this)">copy</button><pre><code>import streamlit as st
+
+def require_login():
+    if not st.user.is_logged_in:
+        st.title("✍️ Handwritten Digit Collector")
+        st.button("Log in with Google", on_click=st.login, args=("google",))
+        st.stop()   # halts here for logged-out users — Streamlit reruns
+                    # the WHOLE script on every interaction, so without
+                    # this, code below would still execute for guests.</code></pre></div>
+<div class="flow-step"><span class="ic">✅</span>Key takeaways</div>
+<ul class="tk"><li><code class="mono-chip">st.user</code> is populated by Streamlit's OIDC handling, never stored by our app.</li><li><code class="mono-chip">st.stop()</code> is what actually enforces the gate — without it the rest of the script still runs.</li><li>A fake login form can't stop someone from typing someone else's name.</li></ul>
+<div class="flow-step"><span class="ic">🎤</span>Discussion</div>
+<details class="qa"><summary>Why not just ask learners to type their name and email?</summary><div class="qa-a">Nothing stops a learner from typing a classmate's email — the dataset's labels would be untrustworthy. OAuth ties every submission to a real, verified Google identity.</div></details>
+<details class="qa"><summary>What does Streamlit's rerun model actually mean for this code?</summary><div class="qa-a">Every button click or widget interaction re-executes app.py top to bottom. That's why require_login() must st.stop() early — otherwise a logged-out user's browser would still render everything below.</div></details>
+</div></div></div>
+
+<div class="module"><div class="mhead"><span class="mno">02</span><h3>Canvas &amp; Capture</h3><span class="level b">Beginner</span><span class="duration">~60–75 min</span><span class="chev">▶</span></div><div class="mbody"><div class="mbody-inner">
+<div class="flow-step"><span class="ic">🔍</span>Intuition</div>
+<p>We draw a digit on screen — but what does the <em>computer</em> actually have afterward? Not a picture file. A grid of numbers. This session's whole point is making that concrete before Session 3 processes it.</p>
+<div class="flow-step"><span class="ic">🧩</span>Split</div>
+<div class="split">
+  <div class="stack-card vibe"><span class="stack-label">Vibe-coded</span><p>Wiring up the <code class="mono-chip">streamlit-drawable-canvas</code> component.</p></div>
+  <div class="stack-card hand"><span class="stack-label">Hand-coded</span><p>Inspecting the raw RGBA array's shape and values; an empty-canvas guard.</p></div>
+</div>
+<div class="flow-step"><span class="ic">💻</span>Code demo</div>
+<div class="codewrap"><button class="cp" onclick="copyCode(this)">copy</button><pre><code>from streamlit_drawable_canvas import st_canvas
+
+canvas_result = st_canvas(
+    stroke_width=18,          # thick strokes survive later downscaling
+    stroke_color="#000000",
+    background_color="#FFFFFF",
+    height=280, width=280,
+    drawing_mode="freedraw",
+    key=f"canvas_{target_digit}",   # fresh canvas per digit prompt
+)
+arr = canvas_result.image_data   # shape: (280, 280, 4) — R,G,B,Alpha</code></pre></div>
+<div class="flow-step"><span class="ic">✅</span>Key takeaways</div>
+<ul class="tk"><li>A drawing is a <code class="mono-chip">(280, 280, 4)</code> NumPy array — RGBA, nothing magic about it.</li><li>Thick strokes (~18px) survive being scaled down to 28×28 later; thin strokes vanish.</li><li>Raw canvas convention is background=white/255, ink=dark — the <em>opposite</em> of what MNIST expects.</li></ul>
+<div class="flow-step"><span class="ic">🎤</span>Discussion</div>
+<details class="qa"><summary>Why does the canvas key depend on the target digit?</summary><div class="qa-a">Streamlit widgets keep their state tied to a stable key. Changing the key when the prompt changes (e.g. canvas_3 → canvas_4) forces a fresh, blank canvas for each new digit instead of reusing the last drawing.</div></details>
+</div></div></div>
+
+<div class="module"><div class="mhead"><span class="mno">03</span><h3>The Preprocessing Pipeline</h3><span class="level a">Conceptual core</span><span class="duration">~75–90 min</span><span class="chev">▶</span></div><div class="mbody"><div class="mbody-inner">
+<div class="flow-step"><span class="ic">🔍</span>Intuition</div>
+<p>MNIST digits all look strangely uniform. Someone had to process 70,000 raw drawings into that format. The real recipe: crop, scale, and re-center — but by <em>center of mass</em>, not just the bounding box. This session is almost entirely hand-coded on purpose.</p>
+<div class="flow-step"><span class="ic">📐</span>Math</div>
+<div class="formula">crop → scale(longest side → 20px, aspect preserved) → paste on 28×28 → shift by (cy, cx) = center_of_mass(image)<br>shift_y = round(14 − cy) &nbsp;&nbsp; shift_x = round(14 − cx)</div>
+<div class="flow-step"><span class="ic">💻</span>Code demo — the payoff line</div>
+<div class="codewrap"><button class="cp" onclick="copyCode(this)">copy</button><pre><code>from scipy import ndimage
+
+def paste_centered_by_mass(scaled, canvas_size=28):
+    canvas = np.zeros((canvas_size, canvas_size), dtype=np.float32)
+    h, w = scaled.shape
+    top, left = (canvas_size-h)//2, (canvas_size-w)//2
+    canvas[top:top+h, left:left+w] = scaled       # bounding-box centered first
+
+    cy, cx = ndimage.center_of_mass(canvas)         # find where the "weight" is
+    shift = (round(canvas_size/2 - cy), round(canvas_size/2 - cx))
+    return ndimage.shift(canvas, shift=shift, mode="constant", cval=0.0)</code></pre></div>
+<div class="flow-step"><span class="ic">✅</span>Key takeaways</div>
+<ul class="tk"><li>Bounding-box centering and center-of-mass centering disagree whenever ink isn't evenly spread — e.g. a "7"'s heavy top stroke.</li><li>Scaling to a 20×20 <em>inner</em> box (not the full 28×28) leaves the margin MNIST digits are known for.</li><li>Anti-aliasing means the crop threshold should be a small positive number, not zero.</li></ul>
+<div class="flow-step"><span class="ic">🎤</span>Discussion</div>
+<details class="qa"><summary>Why center of mass instead of the bounding box's center?</summary><div class="qa-a">A see-saw analogy helps: centering by the physical ends ignores where the weight actually sits. A "7" has most of its ink in the top stroke — bounding-box centering would leave it looking top-heavy off-center, while mass-centering balances it correctly.</div></details>
+<details class="qa"><summary>The "vibe-code trap" — what does an AI-generated version usually miss?</summary><div class="qa-a">Prompted plainly for "center a digit in 28×28," most AI assistants center by bounding box only, skipping center-of-mass entirely — it looks plausible but doesn't match MNIST's actual convention. Worth demoing live and comparing.</div></details>
+</div></div></div>
+
+<div class="module"><div class="mhead"><span class="mno">04</span><h3>Storage &amp; Data Flow</h3><span class="level i">Intermediate</span><span class="duration">~60–75 min</span><span class="chev">▶</span></div><div class="mbody"><div class="mbody-inner">
+<div class="flow-step"><span class="ic">🔍</span>Intuition</div>
+<p>Every processed digit needs a home: a labeled PNG on disk, and a row in a spreadsheet anyone can open. The guided 0→9 flow reads that same spreadsheet to know what to ask for next — no separate progress tracker needed.</p>
+<div class="flow-step"><span class="ic">🧩</span>Split</div>
+<div class="split">
+  <div class="stack-card vibe"><span class="stack-label">Vibe-coded</span><p>The basic append-to-Excel save logic.</p></div>
+  <div class="stack-card hand"><span class="stack-label">Hand-coded</span><p>Safe unique filenames, the read-modify-write pattern and its limits, resuming progress after a refresh.</p></div>
+</div>
+<div class="flow-step"><span class="ic">💻</span>Code demo</div>
+<div class="codewrap"><button class="cp" onclick="copyCode(this)">copy</button><pre><code>def load_progress(email: str) -> set[int]:
+    if not os.path.exists(LOG_PATH):
+        return set()
+    df = pd.read_excel(LOG_PATH)
+    return set(df[df["email"] == email]["label"].astype(int))
+
+def next_digit_to_collect(email: str):
+    done = load_progress(email)
+    for d in range(10):
+        if d not in done:
+            return d
+    return None   # all ten collected</code></pre></div>
+<div class="flow-step"><span class="ic">✅</span>Key takeaways</div>
+<ul class="tk"><li>Reading the log to compute progress makes the app stateless across restarts — no in-memory tracking to lose.</li><li>Rewriting the whole Excel file on every submission is fine at classroom scale, but wouldn't scale to real-MNIST volumes.</li><li>Microsecond timestamps in filenames let a learner redo a digit without silently overwriting an earlier attempt.</li></ul>
+<div class="flow-step"><span class="ic">🎤</span>Discussion</div>
+<details class="qa"><summary>What breaks if two learners submit at the exact same instant against a shared file?</summary><div class="qa-a">The read-modify-write pattern isn't atomic — one submission's write can be overwritten by a race with another. Fine per-learner locally; a real shared deployment would need a database or file locking.</div></details>
+</div></div></div>
+
+<div class="module"><div class="mhead"><span class="mno">05</span><h3>Close the Loop: Train a Model</h3><span class="level a">Optional</span><span class="duration">~60–90 min</span><span class="chev">▶</span></div><div class="mbody"><div class="mbody-inner">
+<div class="flow-step"><span class="ic">🔍</span>Intuition</div>
+<p>The class just built a small labeled dataset by hand. Load it back and train a real classifier — the same shape of pipeline as the capstone below, just on digits everyone in the room actually drew.</p>
+<div class="flow-step"><span class="ic">💻</span>Code demo</div>
+<div class="codewrap"><button class="cp" onclick="copyCode(this)">copy</button><pre><code>from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+
+X = np.array([np.array(Image.open(f"data/images/{f}")).flatten()/255.0
+              for f in df.image_filename])
+y = df.label.values
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42, stratify=y)
+
+model = LogisticRegression(max_iter=1000).fit(X_train, y_train)
+print("accuracy:", model.score(X_test, y_test))</code></pre></div>
+<div class="flow-step"><span class="ic">✅</span>Key takeaways</div>
+<ul class="tk"><li><code class="mono-chip">stratify=y</code> keeps digit balance in both splits even with only ~10 samples per digit per learner.</li><li>Accuracy on a small, single-classroom dataset will likely be modest — that's the lesson, not a bug.</li><li>Confusion between visually similar digits (4/9, 3/8, 1/7) is a good discussion prompt.</li></ul>
+</div></div></div>
+
+</div>
+</div></section>
+
+<!-- ============================ CAPSTONE ============================ -->
+<section id="capstone"><div class="wrap">
+  <div class="station-tag"><span class="n">✦</span>Definition of done</div>
+  <h2 class="sec-title">What "done" looks like after Session 4</h2>
+  <p class="lead">The full app runs start to finish, and every learner leaves with their own small labeled dataset.</p>
+  <div class="grid2" style="margin-top:26px">
+    <div class="card reveal">
+      <h4 style="font-family:var(--display);margin-bottom:10px">The walkthrough</h4>
+      <p>Log in with Google. Get prompted to draw digit 0. Draw it, hit submit, see a clean 28×28 preview. The progress bar advances. Repeat for digits 1 through 9. On the tenth, a completion screen appears.</p>
+    </div>
+    <div class="card reveal">
+      <h4 style="font-family:var(--display);margin-bottom:10px">What's left behind</h4>
+      <p><code class="mono-chip">data/labels.xlsx</code> has ten rows under the learner's email. <code class="mono-chip">data/images/</code> has ten correctly labeled PNGs — a small, honest, hand-built MNIST-style dataset, ready for Session 5.</p>
+    </div>
+  </div>
+</div></section>
+
+<!-- ============================ GLOSSARY ============================ -->
+<section id="glossary"><div class="wrap">
+  <div class="station-tag"><span class="n">✦</span>Reference</div>
+  <h2 class="sec-title">Glossary</h2>
+  <div class="card reveal" style="margin-top:26px">
+    <div class="gloss">
+      <div class="gterm"><b>Bounding box</b><span>The smallest rectangle containing all the ink in a drawing.</span></div>
+      <div class="gterm"><b>Center of mass</b><span>The point where an image's "weight" (pixel brightness) balances — not necessarily the geometric center.</span></div>
+      <div class="gterm"><b>RGBA array</b><span>A drawing's raw pixel data: red, green, blue, and alpha (transparency) channels.</span></div>
+      <div class="gterm"><b>OAuth</b><span>A protocol letting an app verify identity via Google without ever seeing a password.</span></div>
+      <div class="gterm"><b>Stateless progress</b><span>Tracking a learner's completed digits by reading the saved log, not by keeping anything in memory.</span></div>
+      <div class="gterm"><b>Read-modify-write</b><span>Loading a file, changing it, and rewriting the whole thing — simple, but not safe under concurrent writers.</span></div>
+      <div class="gterm"><b>Stratified split</b><span>A train/test split that preserves each class's proportion — vital on a tiny dataset.</span></div>
+      <div class="gterm"><b>Confusion matrix</b><span>A grid of true label vs. predicted label counts, showing which classes get mixed up.</span></div>
+    </div>
+  </div>
+</div></section>
+
+<footer><div class="wrap">
+  <p style="color:var(--text);font-family:var(--display);font-size:18px;margin-bottom:8px">You've walked the whole refinery.</p>
+  <p>Capture → crop → scale → center → save. That single line turns a room full of different hands into one clean, labeled dataset — and it's exactly what MNIST itself was built on.</p>
+  <p style="margin-top:18px">Full session guides live in <code class="mono-chip">/course</code>. Tip: this page respects <span class="kbd">reduced-motion</span> settings and works fully keyboard-navigable.</p>
+</div></footer>
+
+<script>
+"use strict";
+const $ = (s,r=document)=>r.querySelector(s);
+const $$ = (s,r=document)=>[...r.querySelectorAll(s)];
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ---------- theme toggle ---------- */
+(function(){
+  const root=document.documentElement;
+  const saved=(()=>{try{return localStorage.getItem('hdca-theme')}catch(e){return null}})();
+  function apply(mode){
+    if(mode==='light'){root.setAttribute('data-theme','light');}
+    else if(mode==='dark'){root.setAttribute('data-theme','dark');}
+    else{root.removeAttribute('data-theme');}
+    $$('.theme-toggle button').forEach(b=>b.classList.toggle('active', b.dataset.mode===mode));
+    try{localStorage.setItem('hdca-theme', mode);}catch(e){}
+  }
+  apply(saved||'auto');
+  $$('.theme-toggle button').forEach(b=>b.addEventListener('click',()=>apply(b.dataset.mode)));
+})();
+
+/* ---------- progress bar + reveal ---------- */
+const bar = $('#bar');
+addEventListener('scroll',()=>{const h=document.documentElement;bar.style.width=(h.scrollTop/(h.scrollHeight-h.clientHeight)*100)+'%';},{passive:true});
+const io = new IntersectionObserver((es)=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('show');io.unobserve(e.target);}}),{threshold:.12});
+$$('.reveal').forEach(el=>io.observe(el));
+
+/* ---------- hero pipeline loop ---------- */
+(function(){
+  const stages=$$('#stages .stage'), flow=$('#flow'), rail=$('.rail');
+  const scenes=[
+    {in:'A "7", drawn slightly high and to the right of a 280×280 canvas', out:'7_<span style="color:var(--signal)">a1b2c3</span>.png &nbsp;+&nbsp; row: name, email, label=<b style="color:var(--signal)">7</b>'},
+    {in:'A tiny, cautious "3" drawn near the bottom-left corner', out:'3_<span style="color:var(--signal)">d4e5f6</span>.png &nbsp;+&nbsp; row: name, email, label=<b style="color:var(--signal)">3</b>'},
+    {in:'A confident, oversized "0" spanning most of the canvas', out:'0_<span style="color:var(--signal)">7f8g9h</span>.png &nbsp;+&nbsp; row: name, email, label=<b style="color:var(--signal)">0</b>'},
+  ];
+  let s=0;
+  function run(){
+    const sc=scenes[s%scenes.length];
+    $('#hero-in').textContent=sc.in;
+    if(RM){$('#hero-out').innerHTML=sc.out;s++;setTimeout(run,2600);return;}
+    const w=rail.getBoundingClientRect().width;
+    flow.style.transition='none';flow.style.left='-70px';
+    stages.forEach(st=>st.classList.remove('on'));
+    requestAnimationFrame(()=>{flow.style.transition='left 2.6s linear';flow.style.left=(w+10)+'px';});
+    stages.forEach((st,i)=>setTimeout(()=>{st.classList.add('on');setTimeout(()=>st.classList.remove('on'),520);}, i*330));
+    setTimeout(()=>{$('#hero-out').innerHTML=sc.out;},2400);
+    s++;setTimeout(run,3600);
+  }
+  run();
+})();
+
+/* ---------- Live digit refinery demo ---------- */
+(function(){
+  const draw=$('#drawCanvas'), dctx=draw.getContext('2d');
+  const stage=$('#stageCanvas'), sctx=stage.getContext('2d');
+  const fin=$('#finalCanvas'), fctx=fin.getContext('2d');
+  const cap=$('#ref-cap'), dimLab=$('#stageDim');
+  let drawing=false, hasInk=false, step=0;
+
+  function resetDrawCanvas(){
+    dctx.fillStyle='#FFFFFF'; dctx.fillRect(0,0,draw.width,draw.height);
+    dctx.lineWidth=14; dctx.lineCap='round'; dctx.lineJoin='round'; dctx.strokeStyle='#111';
+  }
+  resetDrawCanvas();
+
+  function posFromEvent(e){
+    const r=draw.getBoundingClientRect();
+    const cx=(e.touches?e.touches[0].clientX:e.clientX)-r.left;
+    const cy=(e.touches?e.touches[0].clientY:e.clientY)-r.top;
+    return [cx*(draw.width/r.width), cy*(draw.height/r.height)];
+  }
+  function start(e){drawing=true;hasInk=true;const[x,y]=posFromEvent(e);dctx.beginPath();dctx.moveTo(x,y);e.preventDefault();}
+  function move(e){if(!drawing)return;const[x,y]=posFromEvent(e);dctx.lineTo(x,y);dctx.stroke();e.preventDefault();}
+  function end(){if(drawing){drawing=false;renderStage();}}
+  draw.addEventListener('mousedown',start);draw.addEventListener('mousemove',move);
+  addEventListener('mouseup',end);
+  draw.addEventListener('touchstart',start,{passive:false});draw.addEventListener('touchmove',move,{passive:false});
+  draw.addEventListener('touchend',end);
+
+  $('#clearCanvas').addEventListener('click',()=>{resetDrawCanvas();hasInk=false;clearOutputs();cap.textContent='Draw something on the left to begin.';});
+  $('#sampleDigit').addEventListener('click',()=>{
+    resetDrawCanvas();
+    // hand-drawn-ish "7": top bar + diagonal, positioned off-center on purpose
+    dctx.beginPath();dctx.moveTo(60,50);dctx.lineTo(150,52);dctx.stroke();
+    dctx.beginPath();dctx.moveTo(150,52);dctx.lineTo(95,175);dctx.stroke();
+    hasInk=true;renderStage();
+  });
+
+  function clearOutputs(){
+    sctx.fillStyle=getVar('--panel');sctx.fillRect(0,0,stage.width,stage.height);
+    fctx.fillStyle=getVar('--panel');fctx.fillRect(0,0,fin.width,fin.height);
+  }
+  function getVar(name){return getComputedStyle(document.documentElement).getPropertyValue(name).trim()||'#152341';}
+
+  function getInkArray(){
+    const img=dctx.getImageData(0,0,draw.width,draw.height).data;
+    const w=draw.width,h=draw.height;
+    const ink=new Float32Array(w*h);
+    for(let i=0;i<w*h;i++){
+      const r=img[i*4],g=img[i*4+1],b=img[i*4+2];
+      const gray=(r+g+b)/3;
+      ink[i]=255-gray; // invert: background(white)->0, ink(dark)->high
+    }
+    return {ink,w,h};
+  }
+  function bbox(ink,w,h,thresh=24){
+    let minX=w,maxX=-1,minY=h,maxY=-1;
+    for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+      if(ink[y*w+x]>thresh){if(x<minX)minX=x;if(x>maxX)maxX=x;if(y<minY)minY=y;if(y>maxY)maxY=y;}
+    }
+    if(maxX<0)return null;
+    return {minX,maxX,minY,maxY};
+  }
+  function centerOfMass(arr,w,h){
+    let sum=0,sx=0,sy=0;
+    for(let y=0;y<h;y++)for(let x=0;x<w;x++){const v=arr[y*w+x];sum+=v;sx+=v*x;sy+=v*y;}
+    if(sum===0)return[w/2,h/2];
+    return[sx/sum,sy/sum];
+  }
+
+  function renderStage(){
+    if(!hasInk){clearOutputs();cap.textContent='Draw something on the left to begin.';return;}
+    render();
+  }
+
+  function render(){
+    const {ink,w,h}=getInkArray();
+    const box=bbox(ink,w,h);
+    const captions=[
+      'Raw ink, exactly as drawn — background near 0, strokes near 255 after inversion.',
+      'Cropped to the bounding box of all ink above threshold.',
+      'Scaled so the longer side fits a 20×20 inner box, aspect ratio preserved.',
+      'Re-centered on a 28×28 canvas by center of mass, not just the bounding box.'
+    ];
+    cap.textContent = box ? captions[step] : 'No ink detected — draw something first.';
+    if(!box){clearOutputs();return;}
+
+    // Stage panel (larger preview of the current step)
+    sctx.fillStyle=getVar('--panel');sctx.fillRect(0,0,stage.width,stage.height);
+    if(step===0){
+      dimLab.textContent=w+'×'+h;
+      sctx.drawImage(draw,0,0,stage.width,stage.height);
+    } else if(step===1){
+      const cw=box.maxX-box.minX+1, ch=box.maxY-box.minY+1;
+      dimLab.textContent=cw+'×'+ch+' (cropped)';
+      const off=document.createElement('canvas');off.width=cw;off.height=ch;
+      const octx=off.getContext('2d');
+      octx.drawImage(draw, box.minX,box.minY,cw,ch, 0,0,cw,ch);
+      const scale=Math.min(stage.width/cw,stage.height/ch);
+      sctx.imageSmoothingEnabled=false;
+      sctx.drawImage(off,0,0,cw,ch,(stage.width-cw*scale)/2,(stage.height-ch*scale)/2,cw*scale,ch*scale);
+    } else {
+      // build 28x28 buffer for steps 2 and 3
+      const cw=box.maxX-box.minX+1, ch=box.maxY-box.minY+1;
+      const inner=20;
+      let nw,nh;
+      if(ch>cw){nh=inner;nw=Math.max(1,Math.round(cw*(inner/ch)));}else{nw=inner;nh=Math.max(1,Math.round(ch*(inner/cw)));}
+
+      const off=document.createElement('canvas');off.width=cw;off.height=ch;
+      off.getContext('2d').drawImage(draw, box.minX,box.minY,cw,ch, 0,0,cw,ch);
+      const scaled=document.createElement('canvas');scaled.width=nw;scaled.height=nh;
+      const sc2=scaled.getContext('2d');sc2.imageSmoothingEnabled=true;
+      sc2.drawImage(off,0,0,cw,ch,0,0,nw,nh);
+
+      const buf=document.createElement('canvas');buf.width=28;buf.height=28;
+      const bctx=buf.getContext('2d');
+      bctx.fillStyle='#FFFFFF';bctx.fillRect(0,0,28,28);
+      let top=Math.floor((28-nh)/2), left=Math.floor((28-nw)/2);
+
+      if(step===3){
+        // compute center of mass on bbox-centered 28x28 and shift
+        bctx.drawImage(scaled,0,0,nw,nh,left,top,nw,nh);
+        const id=bctx.getImageData(0,0,28,28).data;
+        const arr=new Float32Array(28*28);
+        for(let i=0;i<28*28;i++){const r=id[i*4],g=id[i*4+1],b=id[i*4+2];arr[i]=255-((r+g+b)/3);}
+        const [cx,cy]=centerOfMass(arr,28,28);
+        const shiftX=Math.round(14-cx), shiftY=Math.round(14-cy);
+        bctx.fillStyle='#FFFFFF';bctx.fillRect(0,0,28,28);
+        bctx.drawImage(scaled,0,0,nw,nh,left+shiftX,top+shiftY,nw,nh);
+        dimLab.textContent='28×28, shift ('+shiftX+','+shiftY+')';
+      } else {
+        bctx.drawImage(scaled,0,0,nw,nh,left,top,nw,nh);
+        dimLab.textContent=nw+'×'+nh+' inside 28×28';
+      }
+
+      sctx.imageSmoothingEnabled=false;
+      const dscale=Math.min(stage.width/28,stage.height/28);
+      sctx.drawImage(buf,0,0,28,28,(stage.width-28*dscale)/2,(stage.height-28*dscale)/2,28*dscale,28*dscale);
+
+      fctx.fillStyle=getVar('--panel');fctx.fillRect(0,0,fin.width,fin.height);
+      fctx.imageSmoothingEnabled=false;
+      const fscale=Math.min(fin.width/28,fin.height/28);
+      fctx.drawImage(buf,0,0,28,28,(fin.width-28*fscale)/2,(fin.height-28*fscale)/2,28*fscale,28*fscale);
+    }
+
+    if(step<=1){
+      fctx.fillStyle=getVar('--panel');fctx.fillRect(0,0,fin.width,fin.height);
+      fctx.font='12px monospace';fctx.fillStyle=getVar('--dim');fctx.textAlign='center';
+      fctx.fillText('step 3+ shows this',fin.width/2,fin.height/2);
+    }
+  }
+
+  $$('#ref-steps .step-btn').forEach(b=>b.addEventListener('click',()=>{
+    $$('#ref-steps .step-btn').forEach(x=>x.classList.remove('active'));b.classList.add('active');
+    step=+b.dataset.step; renderStage();
+  }));
+  clearOutputs();
+})();
+</script>
+
+<script>
+function copyCode(btn){
+  const code = btn.parentElement.querySelector('code').innerText;
+  navigator.clipboard.writeText(code).then(()=>{btn.textContent='copied ✓';setTimeout(()=>btn.textContent='copy',1400);});
+}
+document.querySelectorAll('.module > .mhead').forEach(h=>{
+  h.addEventListener('click',()=>h.parentElement.classList.toggle('open'));
+});
+const firstMod=document.querySelector('.module'); if(firstMod) firstMod.classList.add('open');
+const io2=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('show');io2.unobserve(e.target);}}),{threshold:.08});
+document.querySelectorAll('#sessions .reveal, #pipeline .reveal, #structure .reveal').forEach(el=>io2.observe(el));
+</script>
+
+</body>
+</html>

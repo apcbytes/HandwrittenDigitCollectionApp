@@ -1,0 +1,13 @@
+.streamlit/secrets.toml
+.streamlit/*.json
+data/
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# service-account keys / any downloaded Google credentials — never commit
+*service-account*.json
+*-key.json
+gcp*.json
+client_secret*.json

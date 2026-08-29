@@ -1,0 +1,19 @@
+streamlit>=1.42.0
+Authlib>=1.3.2
+httpx>=0.27.0
+streamlit-drawable-canvas>=0.9.3
+Pillow>=10.0.0
+numpy>=1.26.0
+pandas>=2.2.0
+openpyxl>=3.1.0
+scipy>=1.11.0
+matplotlib>=3.8.0
+
+# Cloud storage backend (Google Sheets log + Google Drive images).
+# Only needed when [storage] backend = "cloud" (Streamlit Community Cloud).
+gspread>=6.1.0
+google-auth>=2.30.0
+google-api-python-client>=2.130.0
+
+# Optional, only needed for course/session_05_optional.md
+scikit-learn>=1.4.0
